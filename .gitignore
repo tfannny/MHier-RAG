@@ -1,4 +1,4 @@
 venv/
 .idea/
-#data/
+data/test_set/debug_data/
 model/

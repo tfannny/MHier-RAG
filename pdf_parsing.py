@@ -87,11 +87,11 @@ class PDFParser:
         from docling.datamodel.pipeline_options import PdfPipelineOptions, TableFormerMode, EasyOcrOptions
         from docling.datamodel.base_models import InputFormat
         from docling.pipeline.standard_pdf_pipeline import StandardPdfPipeline
-        from pyprojroot import here
-
-        local_docling_path = here() / "model" / "docling"
-        # pipeline_options = PdfPipelineOptions(artifacts_path="")
-        pipeline_options = PdfPipelineOptions(artifacts_path=local_docling_path)
+        # from pyprojroot import here
+        #
+        # local_docling_path = here() / "model" / "docling"
+        pipeline_options = PdfPipelineOptions(artifacts_path=None)
+        # pipeline_options = PdfPipelineOptions(artifacts_path=Path(local_docling_path))
         pipeline_options.do_ocr = True  # 开启 OCR，确保扫描版PDF也能识别
         ocr_options = EasyOcrOptions(lang=['en'], force_full_page_ocr=False)
         pipeline_options.ocr_options = ocr_options
