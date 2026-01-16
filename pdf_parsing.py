@@ -87,8 +87,11 @@ class PDFParser:
         from docling.datamodel.pipeline_options import PdfPipelineOptions, TableFormerMode, EasyOcrOptions
         from docling.datamodel.base_models import InputFormat
         from docling.pipeline.standard_pdf_pipeline import StandardPdfPipeline
+        from pyprojroot import here
 
-        pipeline_options = PdfPipelineOptions(artifacts_path="")
+        local_docling_path = here() / "model" / "docling"
+        # pipeline_options = PdfPipelineOptions(artifacts_path="")
+        pipeline_options = PdfPipelineOptions(artifacts_path=local_docling_path)
         pipeline_options.do_ocr = True  # 开启 OCR，确保扫描版PDF也能识别
         ocr_options = EasyOcrOptions(lang=['en'], force_full_page_ocr=False)
         pipeline_options.ocr_options = ocr_options
@@ -273,6 +276,7 @@ class PDFParser:
 
 class ImageProcessor:
     """为PDF中的图片生成文字描述"""
+
     def __init__(self, embedding_model=None, llm_model=None):
         self.embedding_model = embedding_model
         self.llm_model = self.set_up_llm()
@@ -503,6 +507,7 @@ class JsonReportProcessor:
     Docling的原始输出格式非常复杂
     这个类的作用是把复杂的原始数据打平、简化，变成人类和后续RAG程序好读的格式
     """
+
     def __init__(self, metadata_lookup: dict = None, debug_data_path: Path = None):
         self.metadata_lookup = metadata_lookup or {}
         self.debug_data_path = debug_data_path
