@@ -20,30 +20,34 @@ import io
 import base64
 import numpy as np
 
-
 _log = logging.getLogger(__name__)
 
+
 def _process_chunk(pdf_paths, pdf_backend, output_dir, num_threads, metadata_lookup, debug_data_path):
-    """Helper function to process a chunk of PDFs in a separate process."""
-    # Create a new parser instance for this process
+    """
+    用于在单独进程中处理一批PDF文件的辅助函数
+    接收一批PDF路径，创建一个新的PDFParser实例来处理这批文件
+    """
+    # 为此过程创建一个PDFParser实例
     parser = PDFParser(
         pdf_backend=pdf_backend,
         output_dir=output_dir,
         num_threads=num_threads,
-        csv_metadata_path=None  # Metadata lookup is passed directly
+        csv_metadata_path=None  # 元数据查找直接传递
     )
     parser.metadata_lookup = metadata_lookup
     parser.debug_data_path = debug_data_path
     parser.parse_and_export(pdf_paths)
     return f"Processed {len(pdf_paths)} PDFs."
 
+
 class PDFParser:
     def __init__(
-        self,
-        pdf_backend=DoclingParseV2DocumentBackend,
-        output_dir: Path = Path("./parsed_pdfs"),
-        num_threads: int = None,
-        csv_metadata_path: Path = None,
+            self,
+            pdf_backend=DoclingParseV2DocumentBackend,  # 初始化Docling后端
+            output_dir: Path = Path("./parsed_pdfs"),
+            num_threads: int = None,
+            csv_metadata_path: Path = None,  # 如果有 CSV 元数据文件，会加载进来
     ):
         self.pdf_backend = pdf_backend
         self.output_dir = output_dir
@@ -54,16 +58,16 @@ class PDFParser:
 
         if csv_metadata_path is not None:
             self.metadata_lookup = self._parse_csv_metadata(csv_metadata_path)
-            
+
         if self.num_threads is not None:
-            os.environ["OMP_NUM_THREADS"] = str(self.num_threads)
+            os.environ["OMP_NUM_THREADS"] = str(self.num_threads)  # 设置环境变量OMP_NUM_THREADS以优化底层计算库的线程数
 
     @staticmethod
     def _parse_csv_metadata(csv_path: Path) -> dict:
-        """Parse CSV file and create a lookup dictionary with sha1 as key."""
+        """解析CSV文件，并创建以sha1为键的查找字典"""
         import csv
         metadata_lookup = {}
-        
+
         with open(csv_path, 'r', encoding='utf-8') as csvfile:
             reader = csv.DictReader(csvfile)
             for row in reader:
@@ -74,26 +78,29 @@ class PDFParser:
                 }
         return metadata_lookup
 
-    def _create_document_converter(self) -> "DocumentConverter": 
-        """Creates and returns a DocumentConverter with default pipeline options."""
+    def _create_document_converter(self) -> "DocumentConverter":
+        """
+        配置 Docling的DocumentConverter
+        创建并返回一个带有默认管道选项的DocumentConverter
+        """
         from docling.document_converter import DocumentConverter, FormatOption
         from docling.datamodel.pipeline_options import PdfPipelineOptions, TableFormerMode, EasyOcrOptions
         from docling.datamodel.base_models import InputFormat
         from docling.pipeline.standard_pdf_pipeline import StandardPdfPipeline
-        
-        pipeline_options = PdfPipelineOptions(artifacts_path="") 
-        pipeline_options.do_ocr = True
-        ocr_options = EasyOcrOptions(lang=['en'], force_full_page_ocr=False) 
+
+        pipeline_options = PdfPipelineOptions(artifacts_path="")
+        pipeline_options.do_ocr = True  # 开启 OCR，确保扫描版PDF也能识别
+        ocr_options = EasyOcrOptions(lang=['en'], force_full_page_ocr=False)
         pipeline_options.ocr_options = ocr_options
-        pipeline_options.do_table_structure = True
+        pipeline_options.do_table_structure = True  # 开启表格结构识别，Docling能识别复杂表格
         pipeline_options.table_structure_options.do_cell_matching = True
-        pipeline_options.table_structure_options.mode = TableFormerMode.ACCURATE
-        
-        IMAGE_RESOLUTION_SCALE = 2.0
-        pipeline_options.images_scale = IMAGE_RESOLUTION_SCALE 
-        pipeline_options.generate_page_images = True 
-        pipeline_options.generate_picture_images = True 
-        
+        pipeline_options.table_structure_options.mode = TableFormerMode.ACCURATE  # 使用高精度模式识别表格
+
+        IMAGE_RESOLUTION_SCALE = 2.0  # 图片放大两倍处理，提高清晰度
+        pipeline_options.images_scale = IMAGE_RESOLUTION_SCALE
+        pipeline_options.generate_page_images = True  # 生成页面截图，用于后续可能的视觉分析
+        pipeline_options.generate_picture_images = True
+
         format_options = {
             InputFormat.PDF: FormatOption(
                 pipeline_cls=StandardPdfPipeline,
@@ -101,14 +108,15 @@ class PDFParser:
                 backend=self.pdf_backend
             )
         }
-        
+
         return DocumentConverter(format_options=format_options)
 
     def convert_documents(self, input_doc_paths: List[Path]) -> Iterable[ConversionResult]:
         conv_results = self.doc_converter.convert_all(source=input_doc_paths)
         return conv_results
-    
+
     def process_documents(self, conv_results: Iterable[ConversionResult]):
+        """遍历转换结果。如果成功，调用JsonReportProcessor进行数据重组"""
         if self.output_dir is not None:
             self.output_dir.mkdir(parents=True, exist_ok=True)
         success_count = 0
@@ -117,12 +125,13 @@ class PDFParser:
         for conv_res in conv_results:
             if conv_res.status == ConversionStatus.SUCCESS:
                 success_count += 1
-                processor = JsonReportProcessor(metadata_lookup=self.metadata_lookup, debug_data_path=self.debug_data_path)
-                
-                # Normalize the document data to ensure sequential pages
+                processor = JsonReportProcessor(metadata_lookup=self.metadata_lookup,
+                                                debug_data_path=self.debug_data_path)
+
+                # 对文档数据进行规范化处理，以确保页面顺序
                 data = conv_res.document.export_to_dict()
                 normalized_data = self._normalize_page_sequence(data)
-                
+
                 processed_report = processor.assemble_report(conv_res, normalized_data)
                 doc_filename = conv_res.input.file.stem
                 if self.output_dir is not None:
@@ -136,23 +145,23 @@ class PDFParser:
         return success_count, failure_count
 
     def _normalize_page_sequence(self, data: dict) -> dict:
-        """Ensure that page numbers in content are sequential by filling gaps with empty pages."""
+        """确保内容中的页码连续，用空白页填补空白"""
         if 'content' not in data:
             return data
-        
+
         # Create a copy of the data to modify
         normalized_data = data.copy()
-        
+
         # Get existing page numbers and find max page
         existing_pages = {page['page'] for page in data['content']}
         max_page = max(existing_pages)
-        
+
         # Create template for empty page
         empty_page_template = {
             "content": [],
             "page_dimensions": {}  # or some default dimensions if needed
         }
-        
+
         # Create new content array with all pages
         new_content = []
         for page_num in range(1, max_page + 1):
@@ -162,20 +171,21 @@ class PDFParser:
                 {"page": page_num, **empty_page_template}
             )
             new_content.append(page_content)
-        
+
         normalized_data['content'] = new_content
         return normalized_data
 
     def parse_and_export(self, input_doc_paths: List[Path] = None, doc_dir: Path = None):
+        """串行解析PDF文件"""
         start_time = time.time()
         if input_doc_paths is None and doc_dir is not None:
             input_doc_paths = list(doc_dir.glob("*.pdf"))
-        
+
         total_docs = len(input_doc_paths)
         _log.info(f"Starting to process {total_docs} documents")
-        
+
         conv_results = self.convert_documents(input_doc_paths)
-        success_count, failure_count = self.process_documents(conv_results=conv_results) 
+        success_count, failure_count = self.process_documents(conv_results=conv_results)
         elapsed_time = time.time() - start_time
 
         if failure_count > 0:
@@ -185,52 +195,53 @@ class PDFParser:
             _log.error(failed_docs)
             raise RuntimeError(error_message)
 
-        _log.info(f"{'#'*50}\nCompleted in {elapsed_time:.2f} seconds. Successfully converted {success_count}/{total_docs} documents.\n{'#'*50}")
+        _log.info(
+            f"{'#' * 50}\nCompleted in {elapsed_time:.2f} seconds. Successfully converted {success_count}/{total_docs} documents.\n{'#' * 50}")
 
     def parse_and_export_parallel(
-        self,
-        input_doc_paths: List[Path] = None,
-        doc_dir: Path = None,
-        optimal_workers: int = 10,
-        chunk_size: int = None
+            self,
+            input_doc_paths: List[Path] = None,
+            doc_dir: Path = None,
+            optimal_workers: int = 10,
+            chunk_size: int = None
     ):
-        """Parse PDF files in parallel using multiple processes.
+        """并行解析PDF文件
         
         Args:
-            input_doc_paths: List of paths to PDF files to process
-            doc_dir: Directory containing PDF files (used if input_doc_paths is None)
-            optimal_workers: Number of worker processes to use. If None, uses CPU count.
+            input_doc_paths: 待处理的PDF文件路径列表
+            doc_dir: 包含 PDF 文件的目录（如果 input_doc_paths为None，则使用此目录）
+            optimal_workers: 要使用的工作进程数。如果为None，则使用CPU进程数。
         """
         import multiprocessing
         from concurrent.futures import ProcessPoolExecutor, as_completed
 
-        # Get input paths if not provided
+        # 如果未提供输入路径，则获取输入路径
         if input_doc_paths is None and doc_dir is not None:
             input_doc_paths = list(doc_dir.glob("*.pdf"))
 
         total_pdfs = len(input_doc_paths)
         _log.info(f"Starting parallel processing of {total_pdfs} documents")
-        
+
         cpu_count = multiprocessing.cpu_count()
-        
-        # Calculate optimal workers if not specified
+
+        # 如果未指定，则计算最优进程数
         if optimal_workers is None:
             optimal_workers = min(cpu_count, total_pdfs)
-        
+
         if chunk_size is None:
-            # Calculate chunk size (ensure at least 1)
+            # 计算数据块大小（确保至少为1）
             chunk_size = max(1, total_pdfs // optimal_workers)
-        
-        # Split documents into chunks
+
+        # 将文档拆分成多个部分
         chunks = [
-            input_doc_paths[i : i + chunk_size]
+            input_doc_paths[i: i + chunk_size]
             for i in range(0, total_pdfs, chunk_size)
         ]
 
         start_time = time.time()
         processed_count = 0
-        
-        # Use ProcessPoolExecutor for parallel processing
+
+        # 使用ProcessPoolExecutor进行并行处理
         with ProcessPoolExecutor(max_workers=optimal_workers) as executor:
             # Schedule all tasks
             futures = [
@@ -245,13 +256,13 @@ class PDFParser:
                 )
                 for chunk in chunks
             ]
-            
-            # Wait for completion and log results
+
+            # 等待完成并记录结果
             for future in as_completed(futures):
                 try:
                     result = future.result()
                     processed_count += int(result.split()[1])  # Extract number from "Processed X PDFs"
-                    _log.info(f"{'#'*50}\n{result} ({processed_count}/{total_pdfs} total)\n{'#'*50}")
+                    _log.info(f"{'#' * 50}\n{result} ({processed_count}/{total_pdfs} total)\n{'#' * 50}")
                 except Exception as e:
                     _log.error(f"Error processing chunk: {str(e)}")
                     raise
@@ -261,6 +272,7 @@ class PDFParser:
 
 
 class ImageProcessor:
+    """为PDF中的图片生成文字描述"""
     def __init__(self, embedding_model=None, llm_model=None):
         self.embedding_model = embedding_model
         self.llm_model = self.set_up_llm()
@@ -268,33 +280,33 @@ class ImageProcessor:
     def set_up_llm(self):
         load_dotenv()
         llm = OpenAI(
-            api_key="", 
+            api_key="",
             base_url="",
         )
         return llm
-    
+
     def parse_data_uri(self, data_uri):
         if not data_uri.startswith('data:'):
             raise ValueError("Invalid Data URI")
-        
+
         data = data_uri[5:]
         comma_index = data.find(',')
         if comma_index == -1:
             raise ValueError("Invalid Data URI")
-        
+
         meta = data[:comma_index]
         encoded_data = data[comma_index + 1:]
-        
+
         parts = meta.split(';')
         mime_type = parts[0] if parts[0] else None
-        
+
         is_base64 = 'base64' in parts[1:]
-        
+
         if not is_base64:
             return mime_type, encoded_data
-        
+
         return mime_type, encoded_data
-    
+
     def _get_description_prompt(self, image_type):
         # Return different description prompts based on image type
         prompts = {
@@ -350,10 +362,10 @@ class ImageProcessor:
             5. Any diagrams or charts included
             """
         }
-        
+
         # Default prompt if type not found
         default_prompt = "Please describe this image in detail, including main objects, scene, colors and any notable features."
-        
+
         # Create a mapping from specific types to broader categories
         type_mapping = {
             # Chart types
@@ -369,7 +381,7 @@ class ImageProcessor:
             "radar chart": "Data visualization",
             "histogram": "Data visualization",
             "graph": "Data visualization",
-            
+
             # Other specific types
             "ppt": "Presentation slide",
             "powerpoint": "Presentation slide",
@@ -382,34 +394,39 @@ class ImageProcessor:
             "form": "Document",
             "product": "Object"
         }
-        
+
         # Clean the input type
         cleaned_type = image_type.lower().strip()
-        
+
         # First check if it's a specific type we've mapped
         for specific_type, broad_category in type_mapping.items():
             if specific_type in cleaned_type:
                 return prompts[broad_category]
-        
+
         # Then try direct matching with broader categories
         for broad_category in prompts:
             if broad_category.lower() in cleaned_type:
                 return prompts[broad_category]
-        
+
         return default_prompt
 
     def get_image_semantics(self, image_data):
-        
+        """
+        将图片发给多模态大模型（qwen-vl-plus），让它判断图片类型
+        根据分类结果，从_get_description_prompt中获取针对性的提示词
+        再次调用大模型，生成详细的图片内容描述
+        """
+
         base64_image = image_data
 
         semantics = {
-            "description": None, 
-            "image_type": None  
+            "description": None,
+            "image_type": None
         }
-        
+
         if self.llm_model:
             try:
-                
+
                 # Step 1: Identify image type
                 type_prompt = """
                 Please analyze this image and classify it into one of these categories:
@@ -445,7 +462,7 @@ class ImageProcessor:
                         }
                     ]
                 )
-                
+
                 image_type = json.loads(type_completion.model_dump_json())["choices"][0]["message"]["content"]
                 semantics["image_type"] = image_type
 
@@ -456,40 +473,44 @@ class ImageProcessor:
                     model="qwen-vl-plus",
                     messages=[
                         {
-                        "role": "user",
-                        "content": [
-                            {
-                            "type": "text",
-                            "text": description_prompt #"Please describe the picture in detail."
-                            },
-                            {
-                            "type": "image_url",
-                            "image_url": {
-                                "url": f"data:image/jpeg;base64,{base64_image}"
-                            }
-                            }
-                        ]
+                            "role": "user",
+                            "content": [
+                                {
+                                    "type": "text",
+                                    "text": description_prompt  # "Please describe the picture in detail."
+                                },
+                                {
+                                    "type": "image_url",
+                                    "image_url": {
+                                        "url": f"data:image/jpeg;base64,{base64_image}"
+                                    }
+                                }
+                            ]
                         }
                     ]
-                    )
+                )
                 a = completion.model_dump_json()
                 semantics["description"] = json.loads(a)["choices"][0]["message"]["content"]
-                
+
             except Exception as e:
                 semantics["llm_error"] = str(e)
-        
+
         return semantics
-    
+
+
 class JsonReportProcessor:
+    """
+    Docling的原始输出格式非常复杂
+    这个类的作用是把复杂的原始数据打平、简化，变成人类和后续RAG程序好读的格式
+    """
     def __init__(self, metadata_lookup: dict = None, debug_data_path: Path = None):
         self.metadata_lookup = metadata_lookup or {}
         self.debug_data_path = debug_data_path
 
-        self.image_processor = ImageProcessor()  
-
+        self.image_processor = ImageProcessor()
 
     def assemble_report(self, conv_result, normalized_data=None):
-        """Assemble the report using either normalized data or raw conversion result."""
+        """使用标准化数据或原始转换结果编制报告"""
         data = normalized_data if normalized_data is not None else conv_result.document.export_to_dict()
         assembled_report = {}
         assembled_report['metainfo'] = self.assemble_metainfo(data)
@@ -498,7 +519,7 @@ class JsonReportProcessor:
         assembled_report['pictures'] = self.assemble_pictures(data)
         self.debug_data(data)
         return assembled_report
-    
+
     def assemble_metainfo(self, data):
         metainfo = {}
         sha1_name = data['origin']['filename'].rsplit('.', 1)[0]
@@ -509,12 +530,12 @@ class JsonReportProcessor:
         metainfo['pictures_amount'] = len(data.get('pictures', []))
         metainfo['equations_amount'] = len(data.get('equations', []))
         metainfo['footnotes_amount'] = len([t for t in data.get('texts', []) if t.get('label') == 'footnote'])
-        
-        # Add CSV metadata if available
+
+        # 如果可用，添加CSV元数据。
         if self.metadata_lookup and sha1_name in self.metadata_lookup:
             csv_meta = self.metadata_lookup[sha1_name]
             metainfo['company_name'] = csv_meta['company_name']
-            
+
         return metainfo
 
     def process_table(self, table_data):
@@ -526,7 +547,7 @@ class JsonReportProcessor:
             return
         doc_name = data['name']
         path = self.debug_data_path / f"{doc_name}.json"
-        path.parent.mkdir(parents=True, exist_ok=True)    
+        path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("w", encoding="utf-8") as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
 
@@ -557,7 +578,7 @@ class JsonReportProcessor:
                 expanded_children.append(item)
 
         return expanded_children
-    
+
     def _process_text_reference(self, ref_num, data):
         """Helper method to process text references and create content items.
         
@@ -575,7 +596,7 @@ class JsonReportProcessor:
             'type': item_type,
             'text_id': ref_num
         }
-        
+
         # Add 'orig' field only if it differs from 'text'
         orig_content = text_item.get('orig', '')
         if orig_content != text_item.get('text', ''):
@@ -586,17 +607,21 @@ class JsonReportProcessor:
             content_item['enumerated'] = text_item['enumerated']
         if 'marker' in text_item:
             content_item['marker'] = text_item['marker']
-            
+
         return content_item
-    
+
     def assemble_content(self, data):
+        """
+        正文重组
+        将内容按页码归类
+        """
         pages = {}
         # Expand body children to include group references
         body_children = data['body']['children']
         groups = data.get('groups', [])
         expanded_body_children = self.expand_groups(body_children, groups)
 
-        # Process body content
+        # 处理正文
         for item in expanded_body_children:
             if isinstance(item, dict) and '$ref' in item:
                 ref = item['$ref']
@@ -645,14 +670,14 @@ class JsonReportProcessor:
                             }
 
                         pages[page_num]['content'].append(content_item)
-                
+
                 elif ref_type == 'pictures':
                     picture_item = data['pictures'][ref_num]
                     content_item = {
                         'type': 'picture',
                         'picture_id': ref_num
                     }
-                    
+
                     if 'prov' in picture_item and picture_item['prov']:
                         page_num = picture_item['prov'][0]['page_no']
 
@@ -662,29 +687,33 @@ class JsonReportProcessor:
                                 'content': [],
                                 'page_dimensions': picture_item['prov'][0].get('bbox', {})
                             }
-                        
+
                         pages[page_num]['content'].append(content_item)
 
         sorted_pages = [pages[page_num] for page_num in sorted(pages.keys())]
         return sorted_pages
 
     def assemble_tables(self, tables, data):
+        """
+        表格重组
+        将表格数据转换为三种格式：Markdown、HTML、JSON
+        """
         assembled_tables = []
         for i, table in enumerate(tables):
             table_json_obj = table.model_dump()
             table_md = self._table_to_md(table_json_obj)
             table_html = table.export_to_html()
-            
+
             table_data = data['tables'][i]
             table_page_num = table_data['prov'][0]['page_no']
             table_bbox = table_data['prov'][0]['bbox']
             table_bbox = [
                 table_bbox['l'],
-                table_bbox['t'], 
+                table_bbox['t'],
                 table_bbox['r'],
                 table_bbox['b']
             ]
-            
+
             # Get rows and columns from the table data structure
             nrows = table_data['data']['num_rows']
             ncols = table_data['data']['num_cols']
@@ -711,7 +740,7 @@ class JsonReportProcessor:
         for row in table['data']['grid']:
             table_row = [cell['text'] for cell in row]
             table_data.append(table_row)
-        
+
         # Check if the table has headers
         if len(table_data) > 1 and len(table_data[0]) > 0:
             try:
@@ -727,28 +756,32 @@ class JsonReportProcessor:
                 )
         else:
             md_table = tabulate(table_data, tablefmt="github")
-        
+
         return md_table
 
     def assemble_pictures(self, data):
+        """
+        图片重组
+        调用ImageProcessor获取图片的语义描述
+        """
         assembled_pictures = []
-        
+
         for i, picture in enumerate(data['pictures']):
             children_list = self._process_picture_block(picture, data)
-            
+
             ref_num = picture['self_ref'].split('/')[-1]
             ref_num = int(ref_num)
-            
-            picture_page_num = picture['prov'][0]['page_no'] 
+
+            picture_page_num = picture['prov'][0]['page_no']
 
             picture_data_uri = picture['image']['uri']
 
             mime, base64_data = self.image_processor.parse_data_uri(picture_data_uri)
-            
+
             picture_bbox = picture['prov'][0]['bbox']
             picture_bbox = [
                 picture_bbox['l'],
-                picture_bbox['t'], 
+                picture_bbox['t'],
                 picture_bbox['r'],
                 picture_bbox['b']
             ]
@@ -756,7 +789,7 @@ class JsonReportProcessor:
             image_semantics = self.image_processor.get_image_semantics(
                 base64_data
             )
-            
+
             picture_obj = {
                 'picture_id': ref_num,
                 'page': picture_page_num,
@@ -766,20 +799,19 @@ class JsonReportProcessor:
             }
             assembled_pictures.append(picture_obj)
         return assembled_pictures
-    
+
     def _process_picture_block(self, picture, data):
         children_list = []
-        
+
         for item in picture['children']:
             if isinstance(item, dict) and '$ref' in item:
                 ref = item['$ref']
                 ref_type, ref_num = ref.split('/')[-2:]
                 ref_num = int(ref_num)
-                
+
                 if ref_type == 'texts':
                     content_item = self._process_text_reference(ref_num, data)
-                        
+
                     children_list.append(content_item)
 
         return children_list
-
