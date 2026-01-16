@@ -331,22 +331,22 @@ if __name__ == "__main__":
     # 它还会将文档生成的原始输出存储在 debug/data_01_parsed_reports_debug 目录中。这些 JSON 文件包含大量元数据，但不会被使用。
     pipeline.parse_pdf_reports_sequential()
 
-    # # 此方法将 debug/data_01_parsed_reports 中的 JSON 转换为更简单的 JSON，即 Markdown 格式的页面列表。
-    # # 新的 JSON 文件位于 debug/data_02_merged_reports 中。
-    # pipeline.merge_reports()
-    #
-    # # 此方法将报告导出为纯 Markdown 格式。这些报告仅用于审阅和全文搜索配置：gemini_thinking_config
-    # # 新文件位于 debug/data_03_reports_markdown 目录下
-    # pipeline.export_reports_to_markdown()
-    #
-    # # 此方法将报告分割成多个数据块，用于向量化处理
-    # # 新的 JSON 文件位于 databases/chunked_reports 目录中。
-    # pipeline.chunk_reports()
-    #
-    # # 此方法从分块报告中创建向量数据库
-    # # 新文件位于 databases/vector_dbs 目录中。
-    # pipeline.create_vector_dbs()
-    #
-    # # 此方法处理问题和答案
-    # # 问题处理逻辑取决于 run_config
-    # pipeline.process_questions()
+    # 此方法将 debug/data_01_parsed_reports 中的 JSON 转换为更简单的 JSON，即 Markdown 格式的页面列表。
+    # 新的 JSON 文件位于 debug/data_02_merged_reports 中。
+    pipeline.merge_reports()
+
+    # 此方法将报告导出为纯 Markdown 格式。这些报告仅用于审阅和全文搜索配置：gemini_thinking_config
+    # 新文件位于 debug/data_03_reports_markdown 目录下
+    pipeline.export_reports_to_markdown()
+
+    # 此方法将报告分割成多个数据块，用于向量化处理
+    # 新的 JSON 文件位于 databases/chunked_reports 目录中。
+    pipeline.chunk_reports()
+
+    # 此方法从分块报告中创建向量数据库
+    # 新文件位于 databases/vector_dbs 目录中。
+    pipeline.create_vector_dbs()
+
+    # 此方法处理问题和答案
+    # 问题处理逻辑取决于 run_config
+    pipeline.process_questions()
