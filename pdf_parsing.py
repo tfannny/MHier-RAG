@@ -284,8 +284,8 @@ class ImageProcessor:
     def set_up_llm(self):
         load_dotenv()
         llm = OpenAI(
-            api_key="",
-            base_url="",
+            api_key=os.getenv("QWEN_API_KEY"),
+            base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
         )
         return llm
 
@@ -446,10 +446,7 @@ class ImageProcessor:
                 Return only the most matching category name, no explanation needed.
                 """
 
-                client = OpenAI(
-                    api_key="",
-                    base_url="",
-                )
+                client = self.llm_model
 
                 type_completion = client.chat.completions.create(
                     model="qwen-vl-plus",
