@@ -3,3 +3,7 @@ venv/
 data/test_set/debug_data/
 model/
 .env
+__pycache__/
+.ipynb_checkpoints/
+*.py[cod]
+*$py.class
