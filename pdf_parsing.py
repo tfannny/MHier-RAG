@@ -92,7 +92,11 @@ class PDFParser:
         # local_docling_path = here() / "model" / "docling"
         pipeline_options = PdfPipelineOptions(artifacts_path=None)
         # pipeline_options = PdfPipelineOptions(artifacts_path=Path(local_docling_path))
-        pipeline_options.do_ocr = True  # 开启 OCR，确保扫描版PDF也能识别
+
+        # TODO 暂时关闭OCR
+        pipeline_options.do_ocr = False
+        # pipeline_options.do_ocr = True  # 开启 OCR，确保扫描版PDF也能识别
+
         ocr_options = EasyOcrOptions(lang=['en'], force_full_page_ocr=False)
         pipeline_options.ocr_options = ocr_options
         pipeline_options.do_table_structure = True  # 开启表格结构识别，Docling能识别复杂表格
