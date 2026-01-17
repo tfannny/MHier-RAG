@@ -35,3 +35,11 @@ class SBertEmbeddingModel(BaseEmbeddingModel):
 
     def create_embedding(self, text):
         return self.model.encode(text)
+
+class Qwen3EmbeddingModel(BaseEmbeddingModel):
+    # 如果模型下载到了本地,model_name填模型保存目录
+    def __init__(self, model_name="Qwen/Qwen3-Embedding-8B"):
+        self.model = SentenceTransformer(model_name)
+
+    def create_embedding(self, text):
+        return self.model.encode(text)
