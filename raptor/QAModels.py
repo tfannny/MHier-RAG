@@ -189,7 +189,8 @@ class QwenQAModel(BaseQAModel):
         from dotenv import load_dotenv
         load_dotenv()
         self.model = model
-        self.client = OpenAI(api_key=os.environ["QWEN_API_KEY"])
+        self.client = OpenAI(api_key=os.environ["QWEN_API_KEY"],
+                             base_url="https://dashscope.aliyuncs.com/compatible-mode/v1")
 
     @retry(wait=wait_random_exponential(min=1, max=20), stop=stop_after_attempt(6))
     def _attempt_answer_question(

@@ -4,6 +4,9 @@ from abc import ABC, abstractmethod
 from openai import OpenAI
 from sentence_transformers import SentenceTransformer
 from tenacity import retry, stop_after_attempt, wait_random_exponential
+from dotenv import load_dotenv
+
+import os
 
 logging.basicConfig(format="%(asctime)s - %(message)s", level=logging.INFO)
 
@@ -30,16 +33,36 @@ class OpenAIEmbeddingModel(BaseEmbeddingModel):
 
 
 class SBertEmbeddingModel(BaseEmbeddingModel):
-    def __init__(self, model_name="sentence-transformers/multi-qa-mpnet-base-cos-v1"): 
+    def __init__(self, model_name="sentence-transformers/multi-qa-mpnet-base-cos-v1"):
         self.model = SentenceTransformer(model_name)
 
     def create_embedding(self, text):
         return self.model.encode(text)
 
-class Qwen3EmbeddingModel(BaseEmbeddingModel):
+
+class Qwen3LocalEmbeddingModel(BaseEmbeddingModel):
     # 如果模型下载到了本地,model_name填模型保存目录
     def __init__(self, model_name="/root/autodl-tmp/model/qwen3-8b"):
         self.model = SentenceTransformer(model_name)
 
     def create_embedding(self, text):
         return self.model.encode(text)
+
+
+class Qwen3EmbeddingModel(BaseEmbeddingModel):
+    # 如果模型下载到了本地,model_name填模型保存目录
+    def __init__(self, model_name="text-embedding-v4"):
+        self.model = model_name
+        load_dotenv()
+        self.client = OpenAI(api_key=os.environ["QWEN_API_KEY"],
+                             base_url="https://dashscope.aliyuncs.com/compatible-mode/v1")
+
+    def create_embedding(self, text):
+        client = self.client
+        completion = client.embeddings.create(
+            model=self.model,
+            input=text,
+            dimensions=1024,  # 指定向量维度（仅 text-embedding-v3及 text-embedding-v4支持该参数）
+            encoding_format="float"
+        )
+        return completion.model_dump_json()
