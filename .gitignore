@@ -2,3 +2,4 @@ venv/
 .idea/
 data/test_set/debug_data/
 model/
+.env

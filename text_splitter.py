@@ -43,7 +43,9 @@ class TextSplitter():
                 parsed_report = json.load(f)
             tables_by_page = self._get_serialized_tables_by_page(parsed_report.get('tables', []))
 
+        # TODO 这里换成自定义RAPTOR，将openai api 替换为qwen api
         RA = RetrievalAugmentation()
+
         doc_text = ''
         for page in file_content['content']['pages']:
             cleaned_text = page['text'].replace("<|endoftext|>", "")

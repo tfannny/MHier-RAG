@@ -321,6 +321,8 @@ max_st_qwenturbo8k_reasoning_config = RunConfig(
 # Just uncomment the method you want to run
 # You can also change the run_config to try out different configurations
 if __name__ == "__main__":
+    from dotenv import load_dotenv
+    load_dotenv()
     root_path = here() / "data" / "test_set"
     print("root_path:", root_path)
     pipeline = Pipeline(root_path,
