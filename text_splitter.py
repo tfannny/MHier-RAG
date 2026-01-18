@@ -7,7 +7,7 @@ import tiktoken
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 
 from raptor import RetrievalAugmentation, RetrievalAugmentationConfig
-from raptor.EmbeddingModels import Qwen3EmbeddingModel
+from raptor.EmbeddingModels import Qwen3EmbeddingModel, Qwen3LocalEmbeddingModel
 from raptor.QAModels import QwenQAModel
 from raptor.SummarizationModels import QwenSummarizationModel
 
@@ -59,10 +59,15 @@ class TextSplitter():
 
         # RA = RetrievalAugmentation()
         # TODO 这里换成自定义RAPTOR，将openai api 替换为qwen api
+        # RAC = RetrievalAugmentationConfig(
+        #     summarization_model=QwenSummarizationModel(),
+        #     qa_model=QwenQAModel(),
+        #     embedding_model=Qwen3EmbeddingModel()
+        # )
         RAC = RetrievalAugmentationConfig(
             summarization_model=QwenSummarizationModel(),
             qa_model=QwenQAModel(),
-            embedding_model=Qwen3EmbeddingModel()
+            embedding_model=Qwen3LocalEmbeddingModel()
         )
         RA = RetrievalAugmentation(config=RAC)
 
