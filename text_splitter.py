@@ -14,7 +14,10 @@ from raptor.SummarizationModels import QwenSummarizationModel
 
 class TextSplitter():
     def _get_serialized_tables_by_page(self, tables: List[Dict]) -> Dict[int, List[Dict]]:
-        """Group serialized tables by page number"""
+        """
+        按页码对序列化表格进行分组
+        直接切分可能会把表格切碎，导致语义丢失。这里将表格单独提取出来作为一个完整的Chunk
+        """
         tables_by_page = {}
         for table in tables:
             if 'serialized' not in table:
@@ -40,7 +43,11 @@ class TextSplitter():
 
     def _split_report(self, file_content: Dict[str, any], serialized_tables_report_path: Optional[Path] = None) -> Dict[
         str, any]:
-        """Split report into chunks, preserving markdown tables in content and optionally including serialized tables."""
+        """
+        将报告拆分成多个部分，保留内容中的Markdown表格，并可选择包含序列化表格
+        既做了RAPTOR索引构建，也有常规文本切分
+        既有RAPTOR的宏观摘要索引，也有传统的精细切片索引
+        """
         chunks = []
         chunk_id = 0
 
@@ -59,15 +66,19 @@ class TextSplitter():
         )
         RA = RetrievalAugmentation(config=RAC)
 
+        # 拼接全文
         doc_text = ''
         for page in file_content['content']['pages']:
             cleaned_text = page['text'].replace("<|endoftext|>", "")
             doc_text = doc_text + cleaned_text
+
+        # 将全文喂给RAPTOR
         RA.add_documents(doc_text)
         SAVE_PATH = ""
         SAVE_PATH = os.path.join(SAVE_PATH, file_content["metainfo"]["sha1_name"])
         RA.save(SAVE_PATH)
 
+        # 常规文本切分，遍历每一页，进行切分
         for page in file_content['content']['pages']:
             page_chunks = self._split_page(page)
             for chunk in page_chunks:
@@ -75,7 +86,7 @@ class TextSplitter():
                 chunk['type'] = 'content'
                 chunk_id += 1
                 chunks.append(chunk)
-
+            # 如果这一页有表格，把表格也作为独立的chunk加入
             if tables_by_page and page['page'] in tables_by_page:
                 for table in tables_by_page[page['page']]:
                     table['id'] = chunk_id
