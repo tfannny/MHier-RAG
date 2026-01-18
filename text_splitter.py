@@ -59,16 +59,16 @@ class TextSplitter():
 
         # RA = RetrievalAugmentation()
         # TODO 这里换成自定义RAPTOR，将openai api 替换为qwen api
-        RAC = RetrievalAugmentationConfig(
-            summarization_model=QwenSummarizationModel(),
-            qa_model=QwenQAModel(),
-            embedding_model=Qwen3EmbeddingModel()
-        )
         # RAC = RetrievalAugmentationConfig(
         #     summarization_model=QwenSummarizationModel(),
         #     qa_model=QwenQAModel(),
-        #     embedding_model=Qwen3LocalEmbeddingModel()
+        #     embedding_model=Qwen3EmbeddingModel()
         # )
+        RAC = RetrievalAugmentationConfig(
+            summarization_model=QwenSummarizationModel(),
+            qa_model=QwenQAModel(),
+            embedding_model=Qwen3LocalEmbeddingModel()
+        )
         RA = RetrievalAugmentation(config=RAC)
 
         # 拼接全文
