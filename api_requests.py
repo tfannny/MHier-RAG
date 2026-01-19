@@ -453,10 +453,8 @@ class BaseQWENProcessor():
     def set_up_llm(self):
         load_dotenv()
 
-        llm = OpenAI(
-            api_key="",
-            base_url="",
-        )
+        llm = OpenAI(api_key=os.environ["QWEN_API_KEY"],
+                     base_url="https://dashscope.aliyuncs.com/compatible-mode/v1")
 
         return llm
 
