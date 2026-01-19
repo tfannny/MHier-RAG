@@ -9,7 +9,7 @@ import pandas as pd
 from pdf_parsing import PDFParser
 from parsed_reports_merging import PageTextPreparation
 from text_splitter import TextSplitter
-from ingestion import VectorDBIngestor
+from ingestion import VectorDBIngestor,Qwen3LocalVectorDBIngestor
 from ingestion import BM25Ingestor
 from questions_processing import QuestionsProcessor
 
@@ -197,7 +197,9 @@ class Pipeline:
         input_dir = self.paths.documents_dir
         output_dir = self.paths.vector_db_dir
 
-        vdb_ingestor = VectorDBIngestor()
+        # TODO 换成本地向量模型
+        # vdb_ingestor = VectorDBIngestor()
+        vdb_ingestor = Qwen3LocalVectorDBIngestor()
         vdb_ingestor.process_reports(input_dir, output_dir)
         print(f"Vector databases created in {output_dir}")
 
