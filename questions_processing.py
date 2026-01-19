@@ -244,7 +244,7 @@ class QuestionsProcessor:
         return answer_dict
 
     def process_question(self, question: str, schema: str, doc_id: str):
-        answer_dict = self.get_answer_for_question(doc_id=doc_id, question=question, schema=schema)
+        answer_dict = self.get_answer_for_question(document_name=doc_id, question=question, schema=schema)
         return answer_dict
 
     def _create_answer_detail_ref(self, answer_dict: dict, question_index: int) -> str:
