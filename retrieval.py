@@ -8,10 +8,14 @@ from openai import OpenAI
 from dotenv import load_dotenv
 import os
 import numpy as np
+
+from raptor.EmbeddingModels import Qwen3LocalEmbeddingModel
+from raptor.QAModels import QwenQAModel
+from raptor.SummarizationModels import QwenSummarizationModel
 from reranking import LLMReranker
 import base64
 import re
-from raptor import RetrievalAugmentation
+from raptor import RetrievalAugmentation, RetrievalAugmentationConfig
 
 _log = logging.getLogger(__name__)
 
@@ -230,7 +234,15 @@ class VectorRetriever:
         if is_raptor:
             SAVE_PATH = ""
             SAVE_PATH = os.path.join(SAVE_PATH, document_name)
-            RA = RetrievalAugmentation(tree=SAVE_PATH)
+
+            # TODO 自定义RetrievalAugmentation
+            # RA = RetrievalAugmentation(tree=SAVE_PATH)
+            RAC = RetrievalAugmentationConfig(
+                summarization_model=QwenSummarizationModel(),
+                qa_model=QwenQAModel(),
+                embedding_model=Qwen3LocalEmbeddingModel()
+            )
+            RA = RetrievalAugmentation(tree=SAVE_PATH, config=RAC)
             context, layer_information = RA.answer_question(question=query + step_back_query)
             return retrieval_results, context, layer_information
         else:

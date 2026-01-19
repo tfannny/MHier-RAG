@@ -164,6 +164,7 @@ class RetrievalAugmentation:
             tree: The tree instance or the path to a pickled tree file.
         """
         if config is None:
+            # 指定向量模型为Qwen3LocalEmbeddingModel
             config = RetrievalAugmentationConfig(embedding_model=Qwen3LocalEmbeddingModel())
         if not isinstance(config, RetrievalAugmentationConfig):
             raise ValueError(
