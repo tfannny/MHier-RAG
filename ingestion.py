@@ -123,7 +123,7 @@ class Qwen3LocalVectorDBIngestor:
         # 你可以填HuggingFaceID (如 "BAAI/bge-m3")
         # 也可以填本地文件夹路径 (如 "./models/bge-m3")
         print("Loading local embedding model...")
-        self.embedding_model = SentenceTransformer("BAAI/bge-m3", device="cuda") # 如果没显卡改成 "cpu"
+        self.embedding_model = SentenceTransformer("/root/autodl-tmp/model/Qwen3-Embedding-0.6B", device="cuda") # 如果没显卡改成 "cpu"
 
     @retry(wait=wait_fixed(20), stop=stop_after_attempt(2))
     def _get_embeddings(self, text: Union[str, List[str]], model: str = None) -> List[float]:
