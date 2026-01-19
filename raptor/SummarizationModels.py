@@ -73,6 +73,7 @@ class GPT3SummarizationModel(BaseSummarizationModel):
             print(e)
             return e
 
+
 class QwenSummarizationModel(BaseSummarizationModel):
     def __init__(self, model="qwen-turbo"):
 
@@ -80,6 +81,7 @@ class QwenSummarizationModel(BaseSummarizationModel):
 
     @retry(wait=wait_random_exponential(min=1, max=20), stop=stop_after_attempt(6))
     def summarize(self, context, max_tokens=500, stop_sequence=None):
+        logging.debug(f"summarize by {self.model}")
         from dotenv import load_dotenv
         load_dotenv()
         try:

@@ -5,6 +5,7 @@ from openai import OpenAI
 from sentence_transformers import SentenceTransformer
 from tenacity import retry, stop_after_attempt, wait_random_exponential
 from dotenv import load_dotenv
+import logging
 
 import os
 
@@ -46,6 +47,7 @@ class Qwen3LocalEmbeddingModel(BaseEmbeddingModel):
         self.model = SentenceTransformer(model_name)
 
     def create_embedding(self, text):
+        logging.debug(f"create embedding by Qwen3-Embedding-0.6B")
         return self.model.encode(text)
 
 

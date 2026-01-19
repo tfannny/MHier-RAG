@@ -207,6 +207,7 @@ class QwenQAModel(BaseQAModel):
         Returns:
             str: The generated summary.
         """
+        logging.debug(f"answer question by {self.model}")
         response = self.client.chat.completions.create(
             model=self.model,
             messages=[
@@ -223,6 +224,7 @@ class QwenQAModel(BaseQAModel):
 
     @retry(wait=wait_random_exponential(min=1, max=20), stop=stop_after_attempt(6))
     def answer_question(self, context, question, max_tokens=150, stop_sequence=None):
+
 
         try:
             return self._attempt_answer_question(

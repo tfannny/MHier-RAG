@@ -6,6 +6,7 @@ import json
 from tabulate import tabulate
 from pathlib import Path
 from typing import Iterable, List
+import logging
 
 # from docling.backend.docling_parse_backend import DoclingParseDocumentBackend
 from docling.backend.docling_parse_v2_backend import DoclingParseV2DocumentBackend
@@ -451,7 +452,7 @@ class ImageProcessor:
                 """
 
                 client = self.llm_model
-
+                logging.debug(f"get image semantics by qwen-vl-plus")
                 type_completion = client.chat.completions.create(
                     model="qwen-vl-plus",
                     messages=[
