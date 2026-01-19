@@ -112,10 +112,11 @@ class VectorRetriever:
         self.llm = self._set_up_llm()
 
     def _set_up_llm(self):
+        # TODO 需要调用向量模型，可以选API或者本地模型
         load_dotenv()
         llm = OpenAI(
-            api_key="",
-            base_url="",
+            api_key=os.environ["QWEN_API_KEY"],
+            base_url="https://dashscope.aliyuncs.com/compatible-mode/v1"
         )
         return llm
 
