@@ -2,7 +2,7 @@ import logging
 import pickle
 
 from .cluster_tree_builder import ClusterTreeBuilder, ClusterTreeConfig
-from .EmbeddingModels import BaseEmbeddingModel
+from .EmbeddingModels import BaseEmbeddingModel, Qwen3LocalEmbeddingModel
 from .QAModels import BaseQAModel, GPT3TurboQAModel
 from .SummarizationModels import BaseSummarizationModel
 from .tree_builder import TreeBuilder, TreeBuilderConfig
@@ -17,34 +17,34 @@ logging.basicConfig(format="%(asctime)s - %(message)s", level=logging.INFO)
 
 class RetrievalAugmentationConfig:
     def __init__(
-        self,
-        tree_builder_config=None,
-        tree_retriever_config=None,  # Change from default instantiation
-        qa_model=None,
-        embedding_model=None,
-        summarization_model=None,
-        tree_builder_type="cluster",
-        # New parameters for TreeRetrieverConfig and TreeBuilderConfig
-        # TreeRetrieverConfig arguments
-        tr_tokenizer=None,
-        tr_threshold=0.5,
-        tr_top_k=5,
-        tr_selection_mode="top_k",
-        tr_context_embedding_model="OpenAI",
-        tr_embedding_model=None,
-        tr_num_layers=None,
-        tr_start_layer=None,
-        # TreeBuilderConfig arguments
-        tb_tokenizer=None,
-        tb_max_tokens=100,
-        tb_num_layers=5,
-        tb_threshold=0.5,
-        tb_top_k=5,
-        tb_selection_mode="top_k",
-        tb_summarization_length=100,
-        tb_summarization_model=None,
-        tb_embedding_models=None,
-        tb_cluster_embedding_model="OpenAI",
+            self,
+            tree_builder_config=None,
+            tree_retriever_config=None,  # Change from default instantiation
+            qa_model=None,
+            embedding_model=None,
+            summarization_model=None,
+            tree_builder_type="cluster",
+            # New parameters for TreeRetrieverConfig and TreeBuilderConfig
+            # TreeRetrieverConfig arguments
+            tr_tokenizer=None,
+            tr_threshold=0.5,
+            tr_top_k=5,
+            tr_selection_mode="top_k",
+            tr_context_embedding_model="OpenAI",
+            tr_embedding_model=None,
+            tr_num_layers=None,
+            tr_start_layer=None,
+            # TreeBuilderConfig arguments
+            tb_tokenizer=None,
+            tb_max_tokens=100,
+            tb_num_layers=5,
+            tb_threshold=0.5,
+            tb_top_k=5,
+            tb_selection_mode="top_k",
+            tb_summarization_length=100,
+            tb_summarization_model=None,
+            tb_embedding_models=None,
+            tb_cluster_embedding_model="OpenAI",
     ):
         # Validate tree_builder_type
         if tree_builder_type not in supported_tree_builders:
@@ -57,7 +57,7 @@ class RetrievalAugmentationConfig:
             raise ValueError("qa_model must be an instance of BaseQAModel")
 
         if embedding_model is not None and not isinstance(
-            embedding_model, BaseEmbeddingModel
+                embedding_model, BaseEmbeddingModel
         ):
             raise ValueError(
                 "embedding_model must be an instance of BaseEmbeddingModel"
@@ -73,7 +73,7 @@ class RetrievalAugmentationConfig:
             tr_context_embedding_model = "EMB"
 
         if summarization_model is not None and not isinstance(
-            summarization_model, BaseSummarizationModel
+                summarization_model, BaseSummarizationModel
         ):
             raise ValueError(
                 "summarization_model must be an instance of BaseSummarizationModel"
@@ -164,7 +164,7 @@ class RetrievalAugmentation:
             tree: The tree instance or the path to a pickled tree file.
         """
         if config is None:
-            config = RetrievalAugmentationConfig()
+            config = RetrievalAugmentationConfig(embedding_model=Qwen3LocalEmbeddingModel())
         if not isinstance(config, RetrievalAugmentationConfig):
             raise ValueError(
                 "config must be an instance of RetrievalAugmentationConfig"
@@ -220,14 +220,14 @@ class RetrievalAugmentation:
         self.retriever = TreeRetriever(self.tree_retriever_config, self.tree)
 
     def retrieve(
-        self,
-        question,
-        start_layer: int = None,
-        num_layers: int = None,
-        top_k: int = 10,
-        max_tokens: int = 3500,
-        collapse_tree: bool = True,
-        return_layer_information: bool = True,
+            self,
+            question,
+            start_layer: int = None,
+            num_layers: int = None,
+            top_k: int = 10,
+            max_tokens: int = 3500,
+            collapse_tree: bool = True,
+            return_layer_information: bool = True,
     ):
         """
         Retrieves information and answers a question using the TreeRetriever instance.
@@ -261,14 +261,14 @@ class RetrievalAugmentation:
         )
 
     def answer_question(
-        self,
-        question,
-        top_k: int = 4, #10
-        start_layer: int = None,
-        num_layers: int = None,
-        max_tokens: int = 3500,
-        collapse_tree: bool = True,
-        return_layer_information: bool = False,
+            self,
+            question,
+            top_k: int = 4,  # 10
+            start_layer: int = None,
+            num_layers: int = None,
+            max_tokens: int = 3500,
+            collapse_tree: bool = True,
+            return_layer_information: bool = False,
     ):
         """
         Retrieves information and answers a question using the TreeRetriever instance.
@@ -291,7 +291,7 @@ class RetrievalAugmentation:
             question, start_layer, num_layers, top_k, max_tokens, collapse_tree, True
         )
 
-        return context, layer_information 
+        return context, layer_information
 
     def save(self, path):
         if self.tree is None:
